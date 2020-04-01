@@ -1,0 +1,197 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Reference Architecture to host BigBlueButton on AWS - Creates Turn Server
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Turn Server Parameter
+        Parameters:
+          - InstanceType
+          - DomainName
+          - DiskSize
+          - SecretId
+          - Email
+          - EC2KeyName
+          - SecurityGroup
+          - Subnet
+    ParameterLabels:
+      InstanceType:
+        default: Turn Server Instance Type
+      DomainName:
+        default: Domain Name
+      DiskSize:
+        default: Disk Size (GiB)
+      SecretId:
+        default: Secret Id
+      Email:
+        default: Email
+      EC2KeyName:
+        default: EC2 Key Name
+      SecurityGroup:
+        default: Security Group
+      Subnet:
+        default: Subnet
+
+Parameters:
+  InstanceType:
+    Description: Choose an instance type of Turn server
+    AllowedValues:
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m4.16xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.12xlarge
+      - m5.24xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      - r4.large
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - r5.large
+      - r5.2xlarge
+      - r5.4xlarge
+      - r5.8xlarge
+      - r5.12xlarge
+      - r5.16xlarge
+      - r5.24xlarge
+    ConstraintDescription: Must be a valid Amazon EC2 instance type.
+    Default: m5.large
+    Type: String
+  DomainName:
+    AllowedPattern: ^$|(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$
+    Description: The domain of the Turn server
+    Type: String
+    Default: ''
+  DiskSize:
+    Description: The Disk size
+    Type: Number
+    Default: 100
+  SecretId:
+    Description: The Secret Id to access from BigBlueButton Server
+    Type: String
+  Email:
+    Description: Email for Let's encrypt to generate SSL Certificate
+    Type: String
+    AllowedPattern: \w[-\w.+]*@([A-Za-z0-9][-A-Za-z0-9]+\.)+[A-Za-z]{2,14}
+  EC2KeyName:
+    Description: Name of an existing EC2 key pair
+    Type: AWS::EC2::KeyPair::KeyName
+  SecurityGroup:
+    Description: Select the security group for Turn server
+    Type: AWS::EC2::SecurityGroup::Id
+  Subnet:
+    Description: Select existing subnet.
+    Type: AWS::EC2::Subnet::Id
+
+Mappings:
+  RegionMap:
+    cn-north-1:
+      LatestAmiId: "ami-01993b4213b4bffb5"
+    cn-northwest-1:
+      LatestAmiId: "ami-01d4e30d4d4952d0f"
+
+Conditions:
+  DomainName: !Not [ !Equals [ !Ref DomainName, '' ] ]
+
+Resources:
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          turn_server_init:
+            - install-fonts
+            - download-bbb-install
+        install-fonts:
+          packages:
+            apt:
+              fonts-arphic-uming: []
+              fonts-wqy-zenhei: []
+              fonts-cns11643-kai: []
+              fonts-cns11643-sung: []
+              fonts-moe-standard-kai: []
+              fonts-moe-standard-song: []
+              fonts-arphic-bkai00mp: []
+              fonts-arphic-bsmi00lp: []
+              fonts-arphic-ukai: []
+        download-bbb-install:
+          packages:
+            apt:
+              git: []
+              nginx: []
+          files:
+            /tmp/bbb-install.sh:
+              source: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/bbb-install-2.2.2.sh
+              mode: 000500
+              owner: root
+              group: root
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT20M
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            DeleteOnTermination: true
+            VolumeSize: !Ref DiskSize
+            VolumeType: gp2
+      InstanceType: !Ref InstanceType
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", LatestAmiId]
+      KeyName: !Ref EC2KeyName
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -xe
+            apt-get update -y
+            apt-get install -y python-pip
+            wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+            pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+            /usr/local/bin/cfn-init --configsets turn_server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
+            sed -i "s/# server_names_hash_bucket_size 64;/server_names_hash_bucket_size 128;/" /etc/nginx/nginx.conf
+            if [ "${DomainName}" = "" ]; then
+              publicIp=`curl -s http://169.254.169.254/latest/meta-data/public-ipv4`
+              sed -i "s/DIG_IP=.*/DIG_IP=\"${!publicIp}\"/" /tmp/bbb-install.sh
+              dnsName=`curl -s http://169.254.169.254/latest/meta-data/public-hostname`
+              /tmp/bbb-install.sh -c ${!dnsName}:${SecretId} -e ${Email}
+            else
+              /tmp/bbb-install.sh -c ${DomainName}:${SecretId} -e ${Email}
+            fi
+            /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-Turn
+
+Outputs:
+  TurnServerEndpoint:
+    Description: Turn Server Endpoint
+    Value:
+      !If [ DomainName, !Ref DomainName, !GetAtt Instance.PublicDnsName ]
+

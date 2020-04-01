@@ -1,0 +1,171 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Reference Architecture to host Moodle on AWS - Creates VPC security groups
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: AWS Parameters
+      Parameters:
+        - SshAccessCidr
+        - VpcId
+    ParameterLabels:
+      SshAccessCidr:
+        default: SSH Access From
+      VpcId:
+        default: Vpc Id
+
+Parameters:
+  SshAccessCidr:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Description: The CIDR IP range that is permitted to SSH to bastion instance. Note - a value of 0.0.0.0/0 will allow access from ANY IP address.
+    Type: String
+    Default: 0.0.0.0/0
+  VpcId:
+    AllowedPattern: ^(vpc-)([a-z0-9]{8}|[a-z0-9]{17})$
+    Description: The VPC Id of an existing VPC.
+    Type: AWS::EC2::VPC::Id
+
+Resources:
+
+  BastionSecurityGroup:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W40
+            reason: Default egress rule
+          - id: W5
+            reason: Default egress rule
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Bastion instances
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshAccessCidr
+          Description: SSH origin IP range
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+          Description: To all
+      VpcId:
+        !Ref VpcId
+
+  AppSecurityGroup:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W40
+            reason: Default egress rule
+          - id: W5
+            reason: Default egress rule
+          - id: W9
+            reason: Open to world
+          - id: W2
+            reason: Open to world, BigBlueButton Turn and App Server does not support ELB so far
+          - id: W27
+            reason: Turn and App Server should be open to port range
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for BigBlueButton
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Web Access
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Web Access
+        - IpProtocol: udp
+          FromPort: 16384
+          ToPort: 32768
+          CidrIp: 0.0.0.0/0
+          Description: BigBlueButton App
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+          Description: From Bastion
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+          Description: To all
+      VpcId:
+        !Ref VpcId
+
+  TurnSecurityGroup:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W40
+            reason: Default egress rule
+          - id: W5
+            reason: Default egress rule
+          - id: W9
+            reason: Open to world
+          - id: W2
+            reason: Open to world, BigBlueButton Turn and App Server does not support ELB so far
+          - id: W27
+            reason: Turn and App Server should be open to port range
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for BigBlueButton
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3478
+          ToPort: 3478
+          CidrIp: 0.0.0.0/0
+          Description: Coturn listening port
+        - IpProtocol: udp
+          FromPort: 3478
+          ToPort: 3478
+          CidrIp: 0.0.0.0/0
+          Description: Coturn listening port
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: TLS listening port
+        - IpProtocol: udp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: TLS listening port
+        - IpProtocol: udp
+          FromPort: 49152
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+          Description: relay ports
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+          Description: From Bastion
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+          Description: To all
+      VpcId:
+        !Ref VpcId
+
+Outputs:
+  BastionSecurityGroup:
+    Description: Security Group for bastion
+    Value: !Ref BastionSecurityGroup
+  AppSecurityGroup:
+    Description: Security Group for App Server
+    Value: !Ref AppSecurityGroup
+  TurnSecurityGroup:
+    Description: Security Group for Turn Server
+    Value: !Ref TurnSecurityGroup

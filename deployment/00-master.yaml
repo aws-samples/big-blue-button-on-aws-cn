@@ -1,0 +1,288 @@
+# Serverless Limit Monitor Solution
+#
+# template for serverless-limit-monitor-solution
+# **DO NOT DELETE**
+#
+# author: aws-solutions-builder@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: (BigBlueButton) - Solution - Master Template
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: General AWS
+      Parameters:
+        - EC2KeyName
+        - SshAccessCidr
+    - Label:
+        default: Network
+      Parameters:
+        - VpcId
+        - Subnet
+    - Label:
+        default: BigBlueButton General Information
+      Parameters:
+        - Email
+        - SecretId
+    - Label:
+        default: Turn Server
+      Parameters:
+        - TurnServerInstanceType
+        - TurnServerDomainName
+        - TurnServerDiskSize
+    - Label:
+        default: App Server
+      Parameters:
+        - AppServerInstanceType
+        - AppServerDomainName
+        - AppServerDiskSize
+    ParameterLabels:
+      EC2KeyName:
+        default: EC2 Key Pair
+      VpcId:
+        default: VPC ID
+      Subnet:
+        default: Subnet ID
+      SshAccessCidr:
+        default: SSH Access From
+      Email:
+        default: Email
+      SecretId:
+        default: Secret ID
+      TurnServerInstanceType:
+        default: Instance Type
+      TurnServerDomainName:
+        default: Domain Name
+      TurnServerDiskSize:
+        default: Disk Size
+      AppServerInstanceType:
+        default: Instance Type
+      AppServerDomainName:
+        default: Domain Name
+      AppServerDiskSize:
+        default: Disk Size
+
+
+Parameters:
+  EC2KeyName:
+    Description: Exisitng EC2 Key Name
+    Type: AWS::EC2::KeyPair::KeyName
+  SshAccessCidr:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Type: String
+    Default: 0.0.0.0/0
+    Description: The CIDR IP range that is permitted to SSH to bastion instance. Note - a value of 0.0.0.0/0 will allow access from ANY IP address.
+  VpcId:
+    Description: ID of existing VPC
+    Type: AWS::EC2::VPC::Id
+  Subnet:
+    Description: ID of public subnet, you MUST choose an public subnet.
+    Type: AWS::EC2::Subnet::Id
+  Email:
+    Description: The Email address for Let's encrypt to generate SSL Certificate
+    Type: String
+    AllowedPattern: \w[-\w.+]*@([A-Za-z0-9][-A-Za-z0-9]+\.)+[A-Za-z]{2,14}
+  SecretId:
+    Description: The Secret for inter-communication between Turn and App Server
+    Type: String
+    Default: "12345678"
+  TurnServerInstanceType:
+    Description: Choose an instance type of Turn server
+    AllowedValues:
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m4.16xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.12xlarge
+      - m5.24xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      - r4.large
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - r5.large
+      - r5.2xlarge
+      - r5.4xlarge
+      - r5.8xlarge
+      - r5.12xlarge
+      - r5.16xlarge
+      - r5.24xlarge
+    ConstraintDescription: Must be a valid Amazon EC2 instance type.
+    Default: m5.large
+    Type: String
+  TurnServerDomainName:
+    Description: The domain of of the turn server. This is required for production environment
+    Type: String
+    AllowedPattern: ^$|(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$
+    Default: ''
+  TurnServerDiskSize:
+    Description: The Disk size of Turn Server
+    Type: Number
+    Default: 100
+  AppServerInstanceType:
+    Description: Choose an instance type of Turn server
+    AllowedValues:
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m4.16xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.12xlarge
+      - m5.24xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      - r4.large
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - r5.large
+      - r5.2xlarge
+      - r5.4xlarge
+      - r5.8xlarge
+      - r5.12xlarge
+      - r5.16xlarge
+      - r5.24xlarge
+    ConstraintDescription: Must be a valid Amazon EC2 instance type.
+    Default: m5.xlarge
+    Type: String
+  AppServerDomainName:
+    Description: The domain of of the App server. This is required for production environment
+    Type: String
+    AllowedPattern: ^$|(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$
+    Default: ''
+  AppServerDiskSize:
+    Description: The Disk size of Turn Server
+    Type: Number
+    Default: 100
+
+Resources:
+
+#  TurnServerEIP:
+#    Type: AWS::EC2::EIP
+#    DeletionPolicy: Retain
+#    Properties:
+#      Domain: vpc
+#      Tags:
+#        - Key: Name
+#          Value: "Turn Server EIP"
+#
+#  AppServerEIP:
+#    Type: AWS::EC2::EIP
+#    DeletionPolicy: Retain
+#    Properties:
+#      Domain: vpc
+#      Tags:
+#        - Key: Name
+#          Value: "App Server EIP"
+
+  securitygroups:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        SshAccessCidr:
+          !Ref SshAccessCidr
+        VpcId:
+          !Ref VpcId
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-securitygroups.template
+
+  turnserver:
+    DependsOn: securitygroups
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        InstanceType:
+          !Ref TurnServerInstanceType
+        DomainName:
+          !Ref TurnServerDomainName
+        DiskSize:
+          !Ref TurnServerDiskSize
+        SecretId:
+          !Ref SecretId
+        Email:
+          !Ref Email
+        EC2KeyName:
+          !Ref EC2KeyName
+        SecurityGroup:
+          !GetAtt [securitygroups, Outputs.TurnSecurityGroup]
+        Subnet:
+          !Ref Subnet
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-turn-server.template
+
+  appserver:
+    DependsOn:
+      - securitygroups
+      - turnserver
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        InstanceType:
+          !Ref AppServerInstanceType
+        DomainName:
+          !Ref AppServerDomainName
+        DiskSize:
+          !Ref AppServerDiskSize
+        SecretId:
+          !Ref SecretId
+        Email:
+          !Ref Email
+        EC2KeyName:
+          !Ref EC2KeyName
+        SecurityGroup:
+          !GetAtt [securitygroups, Outputs.AppSecurityGroup]
+        Subnet:
+          !Ref Subnet
+        TurnServerEndpoint:
+          !GetAtt [turnserver, Outputs.TurnServerEndpoint]
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-app-server.template
+
+Outputs:
+  TurnServerEndpoint:
+    Description: Turn Server Endpoint
+    Value: !GetAtt [turnserver, Outputs.TurnServerEndpoint]
+  AppServerEndpoint:
+    Description: App Server Endpoint
+    Value: !GetAtt [appserver, Outputs.AppServerEndpoint]
