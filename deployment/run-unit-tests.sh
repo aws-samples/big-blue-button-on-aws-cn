@@ -33,9 +33,4 @@ find $source_dir/simulator -iname "dist" -type d -exec rm -r "{}" \; 2> /dev/nul
 echo "find ../ -type f -name 'package-lock.json' -delete"
 find $source_dir/simulator -type f -name 'package-lock.json' -delete
 
-echo "------------------------------------------------------------------------------"
-echo "[Test] Services - Example Function"
-echo "------------------------------------------------------------------------------"
-cd $source_dir/example-function-js
-npm install
-npm test
+

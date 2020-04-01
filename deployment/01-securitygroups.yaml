@@ -71,7 +71,7 @@ Resources:
             reason: Turn and App Server should be open to port range
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for BigBlueButton
+      GroupDescription: Security group for BigBlueButton App
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -131,6 +131,11 @@ Resources:
           CidrIp: 0.0.0.0/0
           Description: Coturn listening port
         - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Web Access
+        - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
@@ -143,7 +148,7 @@ Resources:
         - IpProtocol: udp
           FromPort: 49152
           ToPort: 65535
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref AppSecurityGroup
           Description: relay ports
         - IpProtocol: tcp
           FromPort: 22
