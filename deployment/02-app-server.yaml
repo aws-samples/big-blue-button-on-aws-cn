@@ -17,6 +17,7 @@ Metadata:
           - SecurityGroup
           - Subnet
           - TurnServerEndpoint
+          - EIPAllocationId
     ParameterLabels:
       InstanceType:
         default: App Server Instance Type
@@ -36,6 +37,8 @@ Metadata:
         default: Subnet
       TurnServerEndpoint:
         default: Turn Server Endpoint
+      EIPAllocationId:
+        default: EIP Allocation ID
 
 Parameters:
   InstanceType:
@@ -113,6 +116,11 @@ Parameters:
     Description: The endpoint address of Turn server
     Type: String
     AllowedPattern: ^$|(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$
+  EIPAllocationId:
+    Description: The Allocation Id of EIP
+    Type: String
+    AllowedPattern: ^eipalloc-[0-9a-z]*
+    Default: 'eipalloc-'
 
 Mappings:
   RegionMap:
@@ -122,9 +130,54 @@ Mappings:
       LatestAmiId: "ami-09081e8e3d61f4b9e"
 
 Conditions:
-  DomainName: !Not [ !Equals [ !Ref DomainName, '' ] ]
+  CustomDomain: !And [ !Not [ !Equals [ !Ref DomainName, '' ] ],  !Not [ !Equals [ !Ref EIPAllocationId, '' ] ] ]
 
 Resources:
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Condition: CustomDomain
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com.cn
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - arn:aws-cn:logs:*:*:*
+        - PolicyName: AssociateEIP
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AssociateAddress
+                Resource:
+                  - '*'
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: CustomDomain
+    Properties:
+      Path: /
+      Roles:
+        - !Ref InstanceRole
 
   Instance:
     Type: AWS::EC2::Instance
@@ -160,7 +213,7 @@ Resources:
     CreationPolicy:
       ResourceSignal:
         Count: 1
-        Timeout: PT50M
+        Timeout: PT60M
     Properties:
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
@@ -171,6 +224,7 @@ Resources:
       InstanceType: !Ref InstanceType
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", LatestAmiId]
       KeyName: !Ref EC2KeyName
+      IamInstanceProfile: !If [CustomDomain, !Ref InstanceProfile, !Ref "AWS::NoValue"]
       SecurityGroupIds:
         - !Ref SecurityGroup
       UserData:
@@ -178,7 +232,14 @@ Resources:
           !Sub |
             #!/bin/bash -xe
             apt-get update -y
+            # Install AWS CLI and associcate EIP
+            if [ "${EIPAllocationId}" != "eipalloc-" ]; then
+              apt-get install awscli -y
+              instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
+              aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
+            fi
             apt-get install -y python-pip
+            # Install CloudFormation helper scripts
             wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
             pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
             /usr/local/bin/cfn-init --configsets server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
@@ -194,10 +255,10 @@ Resources:
             /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-App
+          Value: !Sub ${AWS::StackName}
 
 Outputs:
   AppServerEndpoint:
     Description: App Server Endpoint
     Value:
-      !If [ DomainName, !Ref DomainName, !GetAtt Instance.PublicDnsName ]
+      !If [ CustomDomain, !Ref DomainName, !GetAtt Instance.PublicDnsName ]

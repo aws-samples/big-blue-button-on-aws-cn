@@ -16,6 +16,7 @@ Metadata:
           - EC2KeyName
           - SecurityGroup
           - Subnet
+          - EIPAllocationId
     ParameterLabels:
       InstanceType:
         default: Turn Server Instance Type
@@ -33,6 +34,8 @@ Metadata:
         default: Security Group
       Subnet:
         default: Subnet
+      EIPAllocationId:
+        default: EIP Allocation ID
 
 Parameters:
   InstanceType:
@@ -106,6 +109,11 @@ Parameters:
   Subnet:
     Description: Select existing subnet.
     Type: AWS::EC2::Subnet::Id
+  EIPAllocationId:
+    Description: The Allocation Id of EIP
+    Type: String
+    AllowedPattern: ^eipalloc-[0-9a-z]*
+    Default: 'eipalloc-'
 
 Mappings:
   RegionMap:
@@ -115,16 +123,61 @@ Mappings:
       LatestAmiId: "ami-01d4e30d4d4952d0f"
 
 Conditions:
-  DomainName: !Not [ !Equals [ !Ref DomainName, '' ] ]
+  CustomDomain: !And [ !Not [ !Equals [ !Ref DomainName, '' ] ],  !Not [ !Equals [ !Ref EIPAllocationId, '' ] ] ]
 
 Resources:
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Condition: CustomDomain
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com.cn
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - arn:aws-cn:logs:*:*:*
+        - PolicyName: AssociateEIP
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AssociateAddress
+                Resource:
+                  - '*'
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: CustomDomain
+    Properties:
+      Path: /
+      Roles:
+      - !Ref InstanceRole
 
   Instance:
     Type: AWS::EC2::Instance
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
-          turn_server_init:
+          server_init:
             - install-fonts
             - download-bbb-install
         install-fonts:
@@ -153,7 +206,7 @@ Resources:
     CreationPolicy:
       ResourceSignal:
         Count: 1
-        Timeout: PT20M
+        Timeout: PT30M
     Properties:
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
@@ -164,6 +217,7 @@ Resources:
       InstanceType: !Ref InstanceType
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", LatestAmiId]
       KeyName: !Ref EC2KeyName
+      IamInstanceProfile: !If [CustomDomain, !Ref InstanceProfile, !Ref "AWS::NoValue"]
       SecurityGroupIds:
         - !Ref SecurityGroup
       UserData:
@@ -171,10 +225,17 @@ Resources:
           !Sub |
             #!/bin/bash -xe
             apt-get update -y
+            # Install AWS CLI and associcate EIP
+            if [ "${EIPAllocationId}" != "eipalloc-" ]; then
+              apt-get install awscli -y
+              instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
+              aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
+            fi
             apt-get install -y python-pip
+            # Install CloudFormation helper scripts
             wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
             pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
-            /usr/local/bin/cfn-init --configsets turn_server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
+            /usr/local/bin/cfn-init --configsets server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
             sed -i "s/# server_names_hash_bucket_size 64;/server_names_hash_bucket_size 128;/" /etc/nginx/nginx.conf
             if [ "${DomainName}" = "" ]; then
               publicIp=`curl -s http://169.254.169.254/latest/meta-data/public-ipv4`
@@ -187,11 +248,11 @@ Resources:
             /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-Turn
+          Value: !Sub ${AWS::StackName}
 
 Outputs:
   TurnServerEndpoint:
     Description: Turn Server Endpoint
     Value:
-      !If [ DomainName, !Ref DomainName, !GetAtt Instance.PublicDnsName ]
+      !If [ CustomDomain, !Ref DomainName, !GetAtt Instance.PublicDnsName ]
 

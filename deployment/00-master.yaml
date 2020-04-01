@@ -31,12 +31,14 @@ Metadata:
       Parameters:
         - TurnServerInstanceType
         - TurnServerDomainName
+        - TurnServerEIPAllocationID
         - TurnServerDiskSize
     - Label:
         default: App Server
       Parameters:
         - AppServerInstanceType
         - AppServerDomainName
+        - AppServerEIPAllocationID
         - AppServerDiskSize
     ParameterLabels:
       EC2KeyName:
@@ -57,13 +59,16 @@ Metadata:
         default: Domain Name
       TurnServerDiskSize:
         default: Disk Size
+      TurnServerPublicIP:
+        default: Turn Server Public IP
       AppServerInstanceType:
         default: Instance Type
       AppServerDomainName:
         default: Domain Name
       AppServerDiskSize:
         default: Disk Size
-
+      AppServerPublicIP:
+        defalt: App Server Public IP
 
 Parameters:
   EC2KeyName:
@@ -143,6 +148,11 @@ Parameters:
     Description: The Disk size of Turn Server
     Type: Number
     Default: 100
+  TurnServerEIPAllocationID:
+    Description: The EIP Allocation ID of turn server, you MUST configure DNS record first.
+    Type: String
+    AllowedPattern: ^eipalloc-[0-9a-z]*
+    Default: 'eipalloc-'
   AppServerInstanceType:
     Description: Choose an instance type of Turn server
     AllowedValues:
@@ -198,26 +208,13 @@ Parameters:
     Description: The Disk size of Turn Server
     Type: Number
     Default: 100
+  AppServerEIPAllocationID:
+    Description: The EIP Allocation ID of App server, you MUST configure DNS record first.
+    Type: String
+    AllowedPattern: ^eipalloc-[0-9a-z]*
+    Default: 'eipalloc-'
 
 Resources:
-
-#  TurnServerEIP:
-#    Type: AWS::EC2::EIP
-#    DeletionPolicy: Retain
-#    Properties:
-#      Domain: vpc
-#      Tags:
-#        - Key: Name
-#          Value: "Turn Server EIP"
-#
-#  AppServerEIP:
-#    Type: AWS::EC2::EIP
-#    DeletionPolicy: Retain
-#    Properties:
-#      Domain: vpc
-#      Tags:
-#        - Key: Name
-#          Value: "App Server EIP"
 
   securitygroups:
     Type: AWS::CloudFormation::Stack
@@ -250,6 +247,8 @@ Resources:
           !GetAtt [securitygroups, Outputs.TurnSecurityGroup]
         Subnet:
           !Ref Subnet
+        EIPAllocationId:
+          !Ref TurnServerEIPAllocationID
       TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-turn-server.template
 
   appserver:
@@ -277,6 +276,8 @@ Resources:
           !Ref Subnet
         TurnServerEndpoint:
           !GetAtt [turnserver, Outputs.TurnServerEndpoint]
+        EIPAllocationId:
+          !Ref AppServerEIPAllocationID
       TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-app-server.template
 
 Outputs:
