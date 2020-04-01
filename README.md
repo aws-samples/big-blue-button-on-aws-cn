@@ -22,6 +22,9 @@ BigBlueButton 是一个在线会议系统，通过与 Moodle 的结合使用，�
 
 1. 配置 DNS 解析，使 Turn Server 和 App Server 的域名分别指向两个弹性IP.
 
+1. 如果您在测试阶段，选择使用默认的 EC2 DNS hostname (例如 ec2-52-83-175-227.cn-northwest-1.compute.amazonaws.com.cn), 
+必须为VPC开启 [DNS hostnames 功能](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html#vpc-dns-hostnames)。
+
 ## 步骤1: 启动 CloudFormation 堆栈
 
 此自动化 AWS CloudFormation 模板在 AWS Cloud 上部署 BigBlueButton 应用程序。
@@ -65,16 +68,18 @@ BigBlueButton 是一个在线会议系统，通过与 Moodle 的结合使用，�
 
     | 参数               | 默认值      | 描述               |
     | ------------------ | ----------- | ------------------ |
-    | Instance Size      | m5.large    | Turn 服务器大小     |
+    | Instance Size      | c5.large    | Turn 服务器大小     |
     | Domain Name        |             | Turn Server 域名，在生产环境中必须配置      |
+    | EIP Allocation ID  |             | EIP 的 Allocation ID      |
     | Disk Size          | 100         | 磁盘大小     |
 
     **App Server**
 
     | 参数               | 默认值      | 描述               |
     | ------------------ | ----------- | ------------------ |
-    | Instance Size      | m5.large    | App 服务器大小     |
+    | Instance Size      | c5.2xlarge    | App 服务器大小     |
     | Domain Name        |             | App Server 域名，在生产环境中必须配置      |
+    | EIP Allocation ID  |             | EIP 的 Allocation ID      |
     | Disk Size          | 100         | 磁盘大小     |
 
 2. 选择**下一步**。
