@@ -3,7 +3,7 @@
 # template for big-blue-button-on-aws-cn
 # **DO NOT DELETE**
 #
-# author: aws-gcr-solution-center@amazon.com
+# author: aws-gcr-solution-center@
 AWSTemplateFormatVersion: 2010-09-09
 
 Description: (BigBlueButton) - Solution - Master Template
