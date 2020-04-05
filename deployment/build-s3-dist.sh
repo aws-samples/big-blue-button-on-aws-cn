@@ -79,7 +79,4 @@ else
     sed -i -e $replace $template_dist_dir/*.template
 fi
 
-# Copy bbb-install-2.2.2.sh into global-s3-assets
-echo "cp $template_dir/bbb-install-2.2.2.sh $template_dist_dir/"
-cp $template_dir/bbb-install-2.2.2.sh $template_dist_dir/
 

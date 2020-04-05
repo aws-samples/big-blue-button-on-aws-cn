@@ -1,9 +1,9 @@
-# Serverless Limit Monitor Solution
+# BigBlueButton Solution
 #
-# template for serverless-limit-monitor-solution
+# template for big-blue-button-on-aws-cn
 # **DO NOT DELETE**
 #
-# author: aws-solutions-builder@
+# author: aws-gcr-solution-center@amazon.com
 AWSTemplateFormatVersion: 2010-09-09
 
 Description: (BigBlueButton) - Solution - Master Template
@@ -117,7 +117,6 @@ Parameters:
     Description: The domain of of the turn server. This is required for production environment
     Type: String
     AllowedPattern: ^$|(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$
-    Default: ''
   TurnServerDiskSize:
     Description: The Disk size of Turn Server
     Type: Number
@@ -126,7 +125,6 @@ Parameters:
     Description: The EIP Allocation ID of turn server, you MUST configure DNS record first. e.g. eipalloc-079f15392865107a2
     Type: String
     AllowedPattern: ^eipalloc-[0-9a-z]*
-    Default: 'eipalloc-'
   AppServerInstanceType:
     Description: Choose an instance type of App server, you need at least 4 cores in production environement.
     AllowedValues:
@@ -147,7 +145,6 @@ Parameters:
     Description: The domain of of the App server. This is required for production environment
     Type: String
     AllowedPattern: ^$|(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$
-    Default: ''
   AppServerDiskSize:
     Description: The Disk size of App Server
     Type: Number
@@ -156,7 +153,6 @@ Parameters:
     Description: The EIP Allocation ID of App server, you MUST configure DNS record first. e.g. eipalloc-079f15392865107a2
     Type: String
     AllowedPattern: ^eipalloc-[0-9a-z]*
-    Default: 'eipalloc-'
 
 Resources:
 
@@ -168,10 +164,14 @@ Resources:
           !Ref SshAccessCidr
         VpcId:
           !Ref VpcId
-      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-securitygroups.template
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-security-groups.template
+
+  iamroles:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-iam-roles.template
 
   turnserver:
-    DependsOn: securitygroups
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
@@ -193,12 +193,11 @@ Resources:
           !Ref Subnet
         EIPAllocationId:
           !Ref TurnServerEIPAllocationID
+        InstanceProfile:
+          !GetAtt [iamroles, Outputs.InstanceProfile]
       TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-turn-server.template
 
   appserver:
-    DependsOn:
-      - securitygroups
-      - turnserver
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
@@ -222,6 +221,8 @@ Resources:
           !GetAtt [turnserver, Outputs.TurnServerEndpoint]
         EIPAllocationId:
           !Ref AppServerEIPAllocationID
+        InstanceProfile:
+          !GetAtt [iamroles, Outputs.InstanceProfile]
       TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-app-server.template
 
 Outputs:
