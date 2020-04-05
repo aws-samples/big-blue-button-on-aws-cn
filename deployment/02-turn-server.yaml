@@ -161,6 +161,7 @@ Resources:
             git clone https://github.com/bigbluebutton/bbb-install.git --depth 1
             cd ./bbb-install
             sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/deb https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/deb [trusted=yes] https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/download.docker.com\/linux\/ubuntu/mirrors.tuna.tsinghua.edu.cn\/docker-ce\/linux\/ubuntu/g' /tmp/bbb-install/bbb-install.sh
             chmod 500 /tmp/bbb-install/bbb-install.sh
             # Install Turn Server
