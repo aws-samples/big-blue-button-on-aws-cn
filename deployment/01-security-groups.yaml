@@ -47,7 +47,7 @@ Resources:
           CidrIp: !Ref SshAccessCidr
           Description: SSH origin IP range
       SecurityGroupEgress:
-        - IpProtocol: -1
+        - IpProtocol: "-1"
           FromPort: -1
           ToPort: -1
           CidrIp: 0.0.0.0/0
@@ -94,7 +94,7 @@ Resources:
           SourceSecurityGroupId: !Ref BastionSecurityGroup
           Description: From Bastion
       SecurityGroupEgress:
-        - IpProtocol: -1
+        - IpProtocol: "-1"
           FromPort: -1
           ToPort: -1
           CidrIp: 0.0.0.0/0
@@ -156,7 +156,7 @@ Resources:
           SourceSecurityGroupId: !Ref BastionSecurityGroup
           Description: From Bastion
       SecurityGroupEgress:
-        - IpProtocol: -1
+        - IpProtocol: "-1"
           FromPort: -1
           ToPort: -1
           CidrIp: 0.0.0.0/0

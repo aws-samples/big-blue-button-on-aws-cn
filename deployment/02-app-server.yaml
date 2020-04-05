@@ -18,6 +18,7 @@ Metadata:
           - Subnet
           - TurnServerEndpoint
           - EIPAllocationId
+          - InstanceProfile
     ParameterLabels:
       InstanceType:
         default: App Server Instance Type
@@ -39,6 +40,8 @@ Metadata:
         default: Turn Server Endpoint
       EIPAllocationId:
         default: EIP Allocation ID
+      InstanceProfile:
+        default: Instance Profile
 
 Parameters:
   InstanceType:
@@ -61,7 +64,6 @@ Parameters:
     AllowedPattern: ^$|(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$
     Description: The domain of the App server
     Type: String
-    Default: ''
   DiskSize:
     Description: The Disk size
     Type: Number
@@ -90,7 +92,10 @@ Parameters:
     Description: The Allocation Id of EIP
     Type: String
     AllowedPattern: ^eipalloc-[0-9a-z]*
-    Default: 'eipalloc-'
+  InstanceProfile:
+    Description: Instance profile name
+    Type: String
+
 
 Mappings:
   RegionMap:
@@ -99,60 +104,7 @@ Mappings:
     cn-northwest-1:
       LatestAmiId: "ami-09081e8e3d61f4b9e"
 
-Conditions:
-  CustomDomain: !And [ !Not [ !Equals [ !Ref DomainName, '' ] ],  !Not [ !Equals [ !Ref EIPAllocationId, '' ] ] ]
-
 Resources:
-
-  InstanceRole:
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W11
-            reason: AssociateAddress api does not allow ARN other than *
-    Type: AWS::IAM::Role
-    Condition: CustomDomain
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com.cn
-            Action:
-              - sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: logs
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:DescribeLogStreams
-                Resource:
-                  - arn:aws-cn:logs:*:*:*
-        - PolicyName: AssociateEIP
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ec2:AssociateAddress
-                Resource:
-                  - '*'
-
-  InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Condition: CustomDomain
-    Properties:
-      Path: /
-      Roles:
-        - !Ref InstanceRole
 
   Instance:
     Type: AWS::EC2::Instance
@@ -161,7 +113,6 @@ Resources:
         configSets:
           server_init:
             - install-fonts
-            - download-bbb-install
         install-fonts:
           packages:
             apt:
@@ -174,17 +125,6 @@ Resources:
               fonts-arphic-bkai00mp: []
               fonts-arphic-bsmi00lp: []
               fonts-arphic-ukai: []
-        download-bbb-install:
-          packages:
-            apt:
-              git: []
-              nginx: []
-          files:
-            /tmp/bbb-install.sh:
-              source: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/bbb-install-2.2.2.sh
-              mode: 000500
-              owner: root
-              group: root
     CreationPolicy:
       ResourceSignal:
         Count: 1
@@ -199,7 +139,7 @@ Resources:
       InstanceType: !Ref InstanceType
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", LatestAmiId]
       KeyName: !Ref EC2KeyName
-      IamInstanceProfile: !If [CustomDomain, !Ref InstanceProfile, !Ref "AWS::NoValue"]
+      IamInstanceProfile: !Ref InstanceProfile
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
           DeviceIndex: "0"
@@ -212,25 +152,24 @@ Resources:
             #!/bin/bash -xe
             apt-get update -y
             # Install AWS CLI and associcate EIP
-            if [ "${EIPAllocationId}" != "eipalloc-" ]; then
-              apt-get install awscli -y
-              instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
-              aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
-            fi
+            apt-get install awscli -y
+            instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
+            aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
             apt-get install -y python-pip
             # Install CloudFormation helper scripts
             wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
             pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
             /usr/local/bin/cfn-init --configsets server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
-            sed -i "s/# server_names_hash_bucket_size 64;/server_names_hash_bucket_size 128;/" /etc/nginx/nginx.conf
-            if [ "${DomainName}" = "" ]; then
-              publicIp=`curl -s http://169.254.169.254/latest/meta-data/public-ipv4`
-              sed -i "s/DIG_IP=.*/DIG_IP=\"${!publicIp}\"/" /tmp/bbb-install.sh
-              dnsName=`curl -s http://169.254.169.254/latest/meta-data/public-hostname`
-              /tmp/bbb-install.sh -s ${!dnsName} -v xenial-220 -c ${TurnServerEndpoint}:${SecretId} -e ${Email}
-            else
-              /tmp/bbb-install.sh -s ${DomainName} -v xenial-220 -c ${TurnServerEndpoint}:${SecretId} -e ${Email}
-            fi
+            # Download bbb-install.sh
+            cd /tmp/
+            git clone https://github.com/bigbluebutton/bbb-install.git --depth 1
+            cd ./bbb-install
+            sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/deb https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/deb [trusted=yes] https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/download.docker.com\/linux\/ubuntu/mirrors.tuna.tsinghua.edu.cn\/docker-ce\/linux\/ubuntu/g' /tmp/bbb-install/bbb-install.sh
+            chmod 500 /tmp/bbb-install/bbb-install.sh
+            # Install BigBlueButton App Server
+            /tmp/bbb-install/bbb-install.sh -s ${DomainName} -v xenial-220 -c ${TurnServerEndpoint}:${SecretId} -e ${Email}
             /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
       Tags:
         - Key: Name
@@ -239,5 +178,4 @@ Resources:
 Outputs:
   AppServerEndpoint:
     Description: App Server Endpoint
-    Value:
-      !If [ CustomDomain, !Ref DomainName, !GetAtt Instance.PublicDnsName ]
+    Value: !Ref DomainName

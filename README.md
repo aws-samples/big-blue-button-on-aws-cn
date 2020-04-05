@@ -15,15 +15,15 @@ BigBlueButton 是一个在线会议系统，通过与 Moodle 的结合使用，�
 
 ## 部署说明
 
-1. 准备 ICP 备案过的域名。在中国大陆地区部署 Web 服务需要有 ICP 备案过的域名，才能合法得运行您的业务。请提前准备好 ICP 备案过的域名。
-如果您只是测试环境，可以先使用 EC2 的 DNS Name.
+1. 本解决方案提供 BigBlueButton 在 AWS 中国区域的一键化部署方案. BigBlueButton 使用 
+[GNU Lesser General Public License V3](https://www.gnu.org/licenses/lgpl-3.0.html), 通过本解决方案启动 BigBlueButton 
+则视为接受 [BigBlueButton 协议](https://bigbluebutton.org/open-source-license/).
 
-1. 申请2个弹性IP。 这2个弹性IP分别用于 Turn Server 和 App Server. 
+1. **准备 ICP 备案过的域名**. 在中国大陆地区部署 Web 服务需要有 ICP 备案过的域名，才能合法得运行您的业务。请提前准备好 ICP 备案过的域名.
 
-1. 配置 DNS 解析，使 Turn Server 和 App Server 的域名分别指向两个弹性IP.
+1. **申请2个弹性IP**. 这2个弹性IP分别用于 Turn Server 和 App Server.
 
-1. 如果您在测试阶段，选择使用默认的 EC2 DNS hostname (例如 ec2-52-83-175-227.cn-northwest-1.compute.amazonaws.com.cn), 
-必须为VPC开启 [DNS hostnames 功能](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html#vpc-dns-hostnames)。
+1. **配置 DNS 解析**. 配置 DNS 使 Turn Server 和 App Server 的域名分别指向两个弹性IP.
 
 ## 步骤1: 启动 CloudFormation 堆栈
 
