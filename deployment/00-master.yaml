@@ -164,12 +164,12 @@ Resources:
           !Ref SshAccessCidr
         VpcId:
           !Ref VpcId
-      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-security-groups.template
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%TEMPLATE_BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-security-groups.template
 
   iamroles:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-iam-roles.template
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%TEMPLATE_BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-iam-roles.template
 
   turnserver:
     Type: AWS::CloudFormation::Stack
@@ -195,7 +195,7 @@ Resources:
           !Ref TurnServerEIPAllocationID
         InstanceProfile:
           !GetAtt [iamroles, Outputs.InstanceProfile]
-      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-turn-server.template
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%TEMPLATE_BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-turn-server.template
 
   appserver:
     Type: AWS::CloudFormation::Stack
@@ -223,7 +223,7 @@ Resources:
           !Ref AppServerEIPAllocationID
         InstanceProfile:
           !GetAtt [iamroles, Outputs.InstanceProfile]
-      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-app-server.template
+      TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%TEMPLATE_BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-app-server.template
 
 Outputs:
   TurnServerEndpoint:
