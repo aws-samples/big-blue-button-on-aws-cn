@@ -19,6 +19,9 @@ Metadata:
           - TurnServerEndpoint
           - EIPAllocationId
           - InstanceProfile
+          - GreenlightAccountName
+          - GreenlightAccountEmail
+          - GreenlightAccountPassword
     ParameterLabels:
       InstanceType:
         default: App Server Instance Type
@@ -42,6 +45,12 @@ Metadata:
         default: EIP Allocation ID
       InstanceProfile:
         default: Instance Profile
+      GreenlightAccountName:
+        default: Account Name
+      GreenlightAccountEmail:
+        default: Email
+      GreenlightAccountPassword:
+        default: Password
 
 Parameters:
   InstanceType:
@@ -96,7 +105,18 @@ Parameters:
   InstanceProfile:
     Description: Instance profile name
     Type: String
-
+  GreenlightAccountName:
+    Description: Input the Admin user name
+    Type: String
+    Default: Admin
+  GreenlightAccountEmail:
+    Description: Account email for the admin user
+    Type: String
+    AllowedPattern: \w[-\w.+]*@([A-Za-z0-9][-A-Za-z0-9]+\.)+[A-Za-z]{2,14}
+  GreenlightAccountPassword:
+    Description: Password for the admin user
+    Type: String
+    NoEcho: true
 
 Mappings:
   RegionMap:
@@ -156,12 +176,33 @@ Resources:
             ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
             # APT update
-            apt-get update -y
+            apt update -y
 
             # Install AWS CLI and associcate EIP
             apt-get install awscli -y
             instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
             aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
+
+            # Use Tuna RubyGems Mirror
+            apt install ruby -y
+            gem sources --add https://mirrors.tuna.tsinghua.edu.cn/rubygems/ --remove https://rubygems.org/
+            apt install ruby-bundler -y
+            bundle config mirror.https://rubygems.org https://mirrors.tuna.tsinghua.edu.cn/rubygems
+
+            # Add MongoDB Tuna Mirror
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
+            cat >> /etc/apt/sources.list.d/mongodb.list << EOL
+            deb https://mirrors.tuna.tsinghua.edu.cn/mongodb/apt/ubuntu xenial/mongodb-org/stable multiverse
+            EOL
+            chmod 644 /etc/apt/sources.list.d/mongodb.list
+
+            # docker-ce Tuna Mirror
+            apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+            add-apt-repository "deb [arch=amd64] https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
+
+            # apt updte
+            apt-get update -y
 
             # Install CloudFormation helper scripts
             apt-get install -y python-pip
@@ -182,6 +223,10 @@ Resources:
 
             # Install BigBlueButton App Server
             /tmp/bbb-install/bbb-install.sh -s ${DomainName} -v xenial-220 -c ${TurnServerEndpoint}:${SecretId} -e ${Email} -g
+
+            # Create Greenlight Admin user
+            docker exec greenlight-v2 bundle exec rake user:create["!{GreenlightAccountName}","!{GreenlightAccountEmail}","!{GreenlightAccountPassword}","admin"]
+
             /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
       Tags:
         - Key: Name
