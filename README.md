@@ -1,7 +1,8 @@
 # BigBlueButton on AWS 
 
-BigBlueButton 是一个在线会议系统，通过与 Moodle 的结合使用，我们可以快速部署一套完整的在线学习解决方案。该方案适用于在
-[Moodle 方案](https://github.com/aws-samples/moodle-on-aws-cn)的基础上自动化部署 BigBlueButton.
+BigBlueButton是一个在线会议系统。 您可以使用此解决方案自动设置在线Web会议系统，也可以将其与我们先前发布的
+[Moodle 方案](https://github.com/aws-samples/moodle-on-aws-cn)结合使用。通过与 Moodle 的结合使用，我们可以快速部署
+一套完整的在线学习解决方案。
 
 - **适用Region:** cn-north-1(Beijing), cn-northwest-1(Ningxia)
 - **版本:** v1.0
@@ -9,7 +10,7 @@ BigBlueButton 是一个在线会议系统，通过与 Moodle 的结合使用，�
 
 ## 架构
 
-我们在原有 Moodle 架构的基础上，增加了 BigBlueButton 的部署方案。
+您可以选择直接部署 Web Conference 系统，或者配合 Moodle 方案一起部署，以下是方案的架构图。
 
 ![Architect](assets/architecture.png). 
 
@@ -90,5 +91,5 @@ BigBlueButton 是一个在线会议系统，通过与 Moodle 的结合使用，�
 
 5. 选择**创建堆栈**以部署堆栈。
 
-您可以在AWS CloudFormation控制台的**状态**列中查看堆栈的状态。 您应该在大约30分钟内看到状态为CREATE_COMPLETE。
+您可以在AWS CloudFormation控制台的**状态**列中查看堆栈的状态。 您应该在大约60分钟内看到状态为CREATE_COMPLETE。
 
