@@ -126,6 +126,11 @@ Mappings:
       LatestAmiId: "ami-09081e8e3d61f4b9e"
 
 Resources:
+  Logs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      RetentionInDays: 7
 
   Instance:
     Type: AWS::EC2::Instance
@@ -176,57 +181,116 @@ Resources:
             ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
             # APT update
-            apt update -y
+            apt-get update -y
 
-            # Install AWS CLI and associcate EIP
+            # 1. CloudWatch Agent
+            wget -O /tmp/amazon-cloudwatch-agent.deb https://s3.${AWS::Region}.${AWS::URLSuffix}/amazoncloudwatch-agent-${AWS::Region}/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+            dpkg -i -E /tmp/amazon-cloudwatch-agent.deb
+            cat >> /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOL
+            {
+            "agent": {
+            "metrics_collection_interval": 60,
+            "region": "${AWS::Region}",
+            "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+            "debug": false,
+            "run_as_user": "cwagent"
+            },
+            "metrics": {
+            "namespace": "BigBlueButton",
+            "append_dimensions": {
+              "InstanceId": "\${!aws:InstanceId}"
+            },
+            "metrics_collected": {
+              "disk": {
+                "resources": ["/"],
+                "measurement": [
+                  { "name": "free", "unit": "Gigabytes" },
+                  { "name": "total", "unit": "Gigabytes"},
+                  { "name": "used", "unit": "Gigabytes"}
+                ],
+                "ignore_file_system_types": [
+                  "sysfs", "devtmpfs"
+                ],
+                "metrics_collection_interval": 60
+              }
+            }
+            },
+            "logs": {
+            "logs_collected": {
+              "files": {
+                "collect_list": [
+                  {
+                    "file_path": "/var/log/cloud-init-output.log",
+                    "log_group_name": "${Logs}",
+                    "log_stream_name": "{instance_id}/cloud-init-output.log"
+                  },
+                  {
+                    "file_path": "/var/log/cloud-init.log",
+                    "log_group_name": "${Logs}",
+                    "log_stream_name": "{instance_id}/cloud-init.log"
+                  }
+                ]
+              }
+            },
+            "log_stream_name": "{instance_id}"
+            }
+            }
+            EOL
+            chmod 444 /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+
+            # 2. Install AWS CLI and associcate EIP
             apt-get install awscli -y
             instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
             aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
+            sleep 5
 
-            # Use Tuna RubyGems Mirror
+            # 3. Install CloudFormation helper scripts and Fonts
+            apt-get install -y python-pip
+            pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pip -U
+            pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+            wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+            pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+            /usr/local/bin/cfn-init --configsets server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
+
+            # 4. Use Tuna RubyGems Mirror
             apt install ruby -y
             gem sources --add https://mirrors.tuna.tsinghua.edu.cn/rubygems/ --remove https://rubygems.org/
             apt install ruby-bundler -y
             bundle config mirror.https://rubygems.org https://mirrors.tuna.tsinghua.edu.cn/rubygems
 
-            # Add MongoDB Tuna Mirror
+            # 5. Add MongoDB Tuna Mirror
             apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
             cat >> /etc/apt/sources.list.d/mongodb.list << EOL
             deb https://mirrors.tuna.tsinghua.edu.cn/mongodb/apt/ubuntu xenial/mongodb-org/stable multiverse
             EOL
             chmod 644 /etc/apt/sources.list.d/mongodb.list
 
-            # docker-ce Tuna Mirror
-            apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
+            # 6. docker-ce Tuna Mirror
+            apt install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
             add-apt-repository "deb [arch=amd64] https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
-
-            # apt updte
             apt-get update -y
 
-            # Install CloudFormation helper scripts
-            apt-get install -y python-pip
-            wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-            pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
-            /usr/local/bin/cfn-init --configsets server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
-
-            # Download bbb-install.sh
+            # 7. Download bbb-install.sh and modify the content
             cd /tmp/
             git clone https://github.com/bigbluebutton/bbb-install.git --depth 1
             cd ./bbb-install
             sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/deb https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/deb [trusted=yes] https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/download.docker.com\/linux\/ubuntu/mirrors.tuna.tsinghua.edu.cn\/docker-ce\/linux\/ubuntu/g' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/https:\/\/github.com\/docker\/compose\/releases\/download/https:\/\/get.daocloud.io\/docker\/compose\/releases\/download/' /tmp/bbb-install/bbb-install.sh
             # to avoid DNS lookup issue
             sed -i 's/nc -zvw3 $external_ip 443/nc -zvw10 $external_ip 443/' /tmp/bbb-install/bbb-install.sh
             chmod 500 /tmp/bbb-install/bbb-install.sh
 
-            # Install BigBlueButton App Server
+            # 8. Install BigBlueButton App Server
             /tmp/bbb-install/bbb-install.sh -s ${DomainName} -v xenial-220 -c ${TurnServerEndpoint}:${SecretId} -e ${Email} -g
 
-            # Create Greenlight Admin user
-            docker exec greenlight-v2 bundle exec rake user:create["!{GreenlightAccountName}","!{GreenlightAccountEmail}","!{GreenlightAccountPassword}","admin"]
+            # 9. Create Greenlight Admin user
+            docker exec greenlight-v2 bundle exec rake user:create["${GreenlightAccountName}","${GreenlightAccountEmail}","${GreenlightAccountPassword}","admin"]
 
+            # 10. Signal CloudFormation EC2 create completed with status code
             /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
       Tags:
         - Key: Name
