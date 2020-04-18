@@ -102,6 +102,11 @@ Mappings:
       LatestAmiId: "ami-01d4e30d4d4952d0f"
 
 Resources:
+  Logs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      RetentionInDays: 7
 
   Instance:
     Type: AWS::EC2::Instance
@@ -130,10 +135,14 @@ Resources:
         "Fn::Base64":
           !Sub |
             #!/bin/bash -xe
-            # Replace the Ubuntu 18.04 APT source with Tuna
+
+            # Update timezone
+            rm -f /etc/localtime
+            ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+            # 0. Replace with Tuna Ubuntu 18.04 apt source
             mv /etc/apt/sources.list /etc/apt/sources.list.bak
             cat >> /etc/apt/sources.list << EOL
-            # 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
             deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse
             # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse
             deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse
@@ -142,42 +151,113 @@ Resources:
             # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse
             deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse
             # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse
-            # 预发布软件源，不建议启用
+
             # deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse
             # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse
             EOL
             chmod 644 /etc/apt/sources.list
-
-            # Update timezone
-            rm -f /etc/localtime
-            ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-
-            # APT update
             apt-get update -y
 
-            # Install AWS CLI and associcate EIP
+            # 1. CloudWatch Agent
+            wget -O /tmp/amazon-cloudwatch-agent.deb https://s3.${AWS::Region}.${AWS::URLSuffix}/amazoncloudwatch-agent-${AWS::Region}/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+            dpkg -i -E /tmp/amazon-cloudwatch-agent.deb
+            cat >> /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << EOL
+            {
+            "agent": {
+              "metrics_collection_interval": 60,
+              "region": "${AWS::Region}",
+              "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+              "debug": false,
+              "run_as_user": "cwagent"
+            },
+            "metrics": {
+              "namespace": "BigBlueButton",
+              "append_dimensions": {
+                "InstanceId": "\${!aws:InstanceId}"
+              },
+              "metrics_collected": {
+                "disk": {
+                  "resources": ["/"],
+                  "measurement": [
+                    { "name": "free", "unit": "Gigabytes" },
+                    { "name": "total", "unit": "Gigabytes"},
+                    { "name": "used", "unit": "Gigabytes"}
+                  ],
+                  "ignore_file_system_types": [
+                    "sysfs", "devtmpfs"
+                  ],
+                  "metrics_collection_interval": 60
+                }
+              }
+            },
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
+                    {
+                      "file_path": "/var/log/cloud-init-output.log",
+                      "log_group_name": "${Logs}",
+                      "log_stream_name": "{instance_id}/cloud-init-output.log"
+                    },
+                    {
+                      "file_path": "/var/log/cloud-init.log",
+                      "log_group_name": "${Logs}",
+                      "log_stream_name": "{instance_id}/cloud-init.log"
+                    }
+                  ]
+                }
+              },
+              "log_stream_name": "{instance_id}"
+            }
+            }
+            EOL
+            chmod 444 /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+            sleep 5
+
+            # 2. Install AWS CLI and associcate EIP
             apt-get install awscli -y
             instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
             aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
+            sleep 5
 
-            # Install CloudFormation helper scripts
+            # 3. Install CloudFormation helper scripts
             apt-get install -y python-pip
+            pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pip -U
+            pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
             wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
             pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
 
-            # Download bbb-install.sh
+            # 5. Change PPA Source: yq, bigbluebutton-support, certbot
+            cat >> /etc/apt/sources.list.d/rmescandon-ubuntu-yq-bionic.list << EOL
+            deb [trusted=yes] http://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/ppa/rmescandon/yq/ubuntu bionic main
+            EOL
+            cat >> /etc/apt/sources.list.d/bigbluebutton-ubuntu-support-bionic.list << EOL
+            deb [trusted=yes] http://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/ppa/bigbluebutton/support/ubuntu bionic main
+            EOL
+            cat >> /etc/apt/sources.list.d/certbot-ubuntu-certbot-bionic.list << EOL
+            deb [trusted=yes] http://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/ppa/certbot/certbot/ubuntu bionic main
+            EOL
+
+            # 6. Download bbb-install.sh and modify the content
             cd /tmp/
-            git clone https://github.com/bigbluebutton/bbb-install.git --depth 1
+            git clone https://github.com/JoeShi/bbb-install.git --depth 1
             cd ./bbb-install
-            sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/ppa\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/deb https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/deb [trusted=yes] https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/download.docker.com\/linux\/ubuntu/mirrors.tuna.tsinghua.edu.cn\/docker-ce\/linux\/ubuntu/g' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/https:\/\/github.com\/docker\/compose\/releases\/download/https:\/\/get.daocloud.io\/docker\/compose\/releases\/download/' /tmp/bbb-install/bbb-install.sh
+            # Change MongoDB Source
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
+            sed -i 's/deb http:\/\/repo.mongodb.org\/apt\/ubuntu/deb [trusted=yes] https:\/\/mirrors.tuna.tsinghua.edu.cn\/mongodb\/apt\/ubuntu/' /tmp/bbb-install/bbb-install.sh
             # to avoid DNS lookup issue
             sed -i 's/nc -zvw3 $external_ip 443/nc -zvw10 $external_ip 443/' /tmp/bbb-install/bbb-install.sh
             chmod 500 /tmp/bbb-install/bbb-install.sh
 
-            # Install Turn Server
+            # 7. Install Turn Server
             /tmp/bbb-install/bbb-install.sh -c ${DomainName}:${SecretId} -e ${Email}
+
+            # 8. Signal CloudFormation EC2 create completed with status code
             /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
       Tags:
         - Key: Name

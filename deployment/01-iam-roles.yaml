@@ -22,6 +22,18 @@ Resources:
               - sts:AssumeRole
       Path: /
       Policies:
+        - PolicyName: metrics
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource:
+                  - '*'
+                Condition:
+                  StringEquals:
+                    "cloudwatch:namespace": "BigBlueButton"
         - PolicyName: logs
           PolicyDocument:
             Version: 2012-10-17

@@ -118,7 +118,7 @@ Resources:
             reason: Turn and App Server should be open to port range
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for BigBlueButton
+      GroupDescription: Security group for BigBlueButton Turn
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 3478

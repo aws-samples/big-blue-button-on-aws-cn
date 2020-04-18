@@ -40,6 +40,12 @@ Metadata:
         - AppServerDomainName
         - AppServerEIPAllocationID
         - AppServerDiskSize
+    - Label:
+        default: Greenlight Admin Account
+      Parameters:
+        - GreenlightAccountName
+        - GreenlightAccountEmail
+        - GreenlightAccountPassword
     ParameterLabels:
       EC2KeyName:
         default: EC2 Key Pair
@@ -69,6 +75,12 @@ Metadata:
         default: Disk Size
       AppServerEIPAllocationID:
         default: EIP Allocation ID
+      GreenlightAccountName:
+        default: Account Name
+      GreenlightAccountEmail:
+        default: Email
+      GreenlightAccountPassword:
+        default: Password
 
 Parameters:
   EC2KeyName:
@@ -153,6 +165,18 @@ Parameters:
     Description: The EIP Allocation ID of App server, you MUST configure DNS record first. e.g. eipalloc-079f15392865107a2
     Type: String
     AllowedPattern: ^eipalloc-[0-9a-z]*
+  GreenlightAccountName:
+    Description: Input the Admin user name
+    Type: String
+    Default: Admin
+  GreenlightAccountEmail:
+    Description: Account email for the admin user
+    Type: String
+    AllowedPattern: \w[-\w.+]*@([A-Za-z0-9][-A-Za-z0-9]+\.)+[A-Za-z]{2,14}
+  GreenlightAccountPassword:
+    Description: Password for the admin user
+    Type: String
+    NoEcho: true
 
 Resources:
 
@@ -223,6 +247,12 @@ Resources:
           !Ref AppServerEIPAllocationID
         InstanceProfile:
           !GetAtt [iamroles, Outputs.InstanceProfile]
+        GreenlightAccountName:
+          !Ref GreenlightAccountName
+        GreenlightAccountEmail:
+          !Ref GreenlightAccountEmail
+        GreenlightAccountPassword:
+          !Ref GreenlightAccountPassword
       TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%TEMPLATE_BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-app-server.template
 
 Outputs:
@@ -232,3 +262,6 @@ Outputs:
   AppServerEndpoint:
     Description: App Server Endpoint
     Value: !GetAtt [appserver, Outputs.AppServerEndpoint]
+  GreenlightAdminEmail:
+    Description: Email for the admin user. Use for to login into BigBlueButton.
+    Value: !Ref GreenlightAccountEmail

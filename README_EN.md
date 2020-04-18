@@ -7,7 +7,7 @@ deploy a complete e-learning solution.
 
 - **Supported Regions:** cn-north-1(Beijing), cn-northwest-1(Ningxia)
 - **Version:** v1.0
-- **Estimated Deployment Time:** 60min
+- **Time to deploy:** Approximately 60 minutes
 
 ## Architect
 

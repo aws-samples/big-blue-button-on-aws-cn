@@ -4,15 +4,21 @@ BigBlueButton是一个在线会议系统。 您可以使用此解决方案自动
 [Moodle 方案](https://github.com/aws-samples/moodle-on-aws-cn)结合使用。通过与 Moodle 的结合使用，我们可以快速部署
 一套完整的在线学习解决方案。
 
-- **适用Region:** cn-north-1(Beijing), cn-northwest-1(Ningxia)
+- **适用Region:** cn-northwest-1(宁夏), cn-north-1(北京)
 - **版本:** v1.0
 - **预计部署时间:** 60min
 
+我们推荐您使用 **cn-northwest-1(宁夏)** 区域。如果您在部署过程中出现问题，可以通过 GitHub Issues 联系我们。
+
 ## 架构
 
-您可以选择直接部署 Web Conference 系统，或者配合 Moodle 方案一起部署，以下是方案的架构图。
+您可以选择直接部署 Web Conference 系统，以下是方案的架构图。
 
-![Architect](assets/architecture.png). 
+![Architect](assets/arch2.png)
+
+或者您可以结合[Moodle 方案](https://github.com/aws-samples/moodle-on-aws-cn)结合使用，架构图如下:
+
+![Architect](assets/arch1.png) 
 
 ## 部署说明
 
@@ -93,3 +99,13 @@ BigBlueButton是一个在线会议系统。 您可以使用此解决方案自动
 
 您可以在AWS CloudFormation控制台的**状态**列中查看堆栈的状态。 您应该在大约60分钟内看到状态为CREATE_COMPLETE。
 
+## 常见问题
+
+**Q: 部署失败了，如何查看失败的原因?**
+
+默认情况下，我们的程序会通过 [CloudWatch Agent] 将日志上传到 [CloudWatch Logs] 服务中，您可以登陆控制台，查看具体的错误原因。
+如果 CloudWatch Agent 未能在您的实例上正确启动，您需要登陆到机器查看错误原因。日志文件位于 `/var/log/cloud-init-output.log`.
+
+**Q: 这个方案可以适用于 AWS 海外区域吗?**
+
+暂时不能，如果您有需要，请开 GitHub Issues 联系我们。
