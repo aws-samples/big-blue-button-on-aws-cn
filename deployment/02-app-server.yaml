@@ -180,7 +180,22 @@ Resources:
             rm -f /etc/localtime
             ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
-            # APT update
+            # 0. Replace with Tuna Ubuntu 16.04 apt source
+            mv /etc/apt/sources.list /etc/apt/sources.list.bak
+            cat >> /etc/apt/sources.list << EOL
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial main restricted universe multiverse
+            deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial main restricted universe multiverse
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-updates main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-updates main restricted universe multiverse
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-backports main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-backports main restricted universe multiverse
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-security main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-security main restricted universe multiverse
+
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-proposed main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-proposed main restricted universe multiverse
+            EOL
+            chmod 644 /etc/apt/sources.list
             apt-get update -y
 
             # 1. CloudWatch Agent
@@ -254,32 +269,39 @@ Resources:
             /usr/local/bin/cfn-init --configsets server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
 
             # 4. Use Tuna RubyGems Mirror
-            apt install ruby -y
+            apt-get install ruby -y
             gem sources --add https://mirrors.tuna.tsinghua.edu.cn/rubygems/ --remove https://rubygems.org/
-            apt install ruby-bundler -y
+            apt-get install ruby-bundler -y
             bundle config mirror.https://rubygems.org https://mirrors.tuna.tsinghua.edu.cn/rubygems
 
-            # 5. Add MongoDB Tuna Mirror
-            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
-            cat >> /etc/apt/sources.list.d/mongodb.list << EOL
-            deb https://mirrors.tuna.tsinghua.edu.cn/mongodb/apt/ubuntu xenial/mongodb-org/stable multiverse
+            # 5. Change PPA Source: yq, bigbluebutton-support, certbot
+            cat >> /etc/apt/sources.list.d/rmescandon-ubuntu-yq-xenial.list << EOL
+            deb [trusted=yes] http://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/ppa/rmescandon/yq/ubuntu xenial main
             EOL
-            chmod 644 /etc/apt/sources.list.d/mongodb.list
+            cat >> /etc/apt/sources.list.d/bigbluebutton-ubuntu-support-xenial.list << EOL
+            deb [trusted=yes] http://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/ppa/bigbluebutton/support/ubuntu xenial main
+            EOL
+            cat >> /etc/apt/sources.list.d/certbot-ubuntu-certbot-xenial.list << EOL
+            deb [trusted=yes] http://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/ppa/certbot/certbot/ubuntu xenial main
+            EOL
 
             # 6. docker-ce Tuna Mirror
-            apt install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
+            apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
             add-apt-repository "deb [arch=amd64] https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
             apt-get update -y
 
             # 7. Download bbb-install.sh and modify the content
             cd /tmp/
-            git clone https://github.com/bigbluebutton/bbb-install.git --depth 1
+            git clone https://github.com/JoeShi/bbb-install.git --depth 1
             cd ./bbb-install
-            sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/ppa\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/deb https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/deb [trusted=yes] https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/download.docker.com\/linux\/ubuntu/mirrors.tuna.tsinghua.edu.cn\/docker-ce\/linux\/ubuntu/g' /tmp/bbb-install/bbb-install.sh
             sed -i 's/https:\/\/github.com\/docker\/compose\/releases\/download/https:\/\/get.daocloud.io\/docker\/compose\/releases\/download/' /tmp/bbb-install/bbb-install.sh
+            # Change MongoDB Source
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
+            sed -i 's/deb http:\/\/repo.mongodb.org\/apt\/ubuntu/deb [trusted=yes] https:\/\/mirrors.tuna.tsinghua.edu.cn\/mongodb\/apt\/ubuntu/' /tmp/bbb-install/bbb-install.sh
             # to avoid DNS lookup issue
             sed -i 's/nc -zvw3 $external_ip 443/nc -zvw10 $external_ip 443/' /tmp/bbb-install/bbb-install.sh
             chmod 500 /tmp/bbb-install/bbb-install.sh

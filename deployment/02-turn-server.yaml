@@ -140,7 +140,22 @@ Resources:
             rm -f /etc/localtime
             ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
-            # APT update
+            # 0. Replace with Tuna Ubuntu 18.04 apt source
+            mv /etc/apt/sources.list /etc/apt/sources.list.bak
+            cat >> /etc/apt/sources.list << EOL
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse
+            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse
+
+            # deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse
+            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse
+            EOL
+            chmod 644 /etc/apt/sources.list
             apt-get update -y
 
             # 1. CloudWatch Agent
