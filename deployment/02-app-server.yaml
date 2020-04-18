@@ -243,6 +243,21 @@ Resources:
                     "file_path": "/var/log/cloud-init.log",
                     "log_group_name": "${Logs}",
                     "log_stream_name": "{instance_id}/cloud-init.log"
+                  },
+                  {
+                    "file_path": "/var/log/nginx/bigbluebutton.access.log",
+                    "log_group_name": "${Logs}",
+                    "log_stream_name": "{instance_id}/nginx-access.log"
+                  },
+                  {
+                    "file_path": "/var/log/nginx/error.log",
+                    "log_group_name": "${Logs}",
+                    "log_stream_name": "{instance_id}/nginx-error.log"
+                  },
+                  {
+                    "file_path": "/var/log/bigbluebutton",
+                    "log_group_name": "${Logs}",
+                    "log_stream_name": "{instance_id}/tomcat-bigbluebutton.log"
                   }
                 ]
               }
@@ -253,6 +268,7 @@ Resources:
             EOL
             chmod 444 /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
             /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+            sleep 5
 
             # 2. Install AWS CLI and associcate EIP
             apt-get install awscli -y
