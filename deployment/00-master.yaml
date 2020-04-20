@@ -260,8 +260,11 @@ Outputs:
     Description: Turn Server Endpoint
     Value: !GetAtt [turnserver, Outputs.TurnServerEndpoint]
   AppServerEndpoint:
-    Description: App Server Endpoint
+    Description: App Server Endpoint, Greenlight Endpoint
     Value: !GetAtt [appserver, Outputs.AppServerEndpoint]
   GreenlightAdminEmail:
-    Description: Email for the admin user. Use for to login into BigBlueButton.
+    Description: Email for the admin user. Used for to login into BigBlueButton.
     Value: !Ref GreenlightAccountEmail
+  BastionSecurityGroup:
+    Description: Security group for the bastion instance. You can access BigBlueButton App Server and Turn server through instance associated with this security group.
+    Value: !GetAtt [securitygroups, Outputs.BastionSecurityGroup]

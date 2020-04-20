@@ -238,6 +238,10 @@ Resources:
             cat >> /etc/apt/sources.list.d/certbot-ubuntu-certbot-bionic.list << EOL
             deb [trusted=yes] http://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/ppa/certbot/certbot/ubuntu bionic main
             EOL
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2E1B01D0E95B94BC
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 8C47BE8E75BCA694
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 6657DBE0CC86BB64
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 37B5DD5EFAB46452
 
             # 6. Download bbb-install.sh and modify the content
             cd /tmp/

@@ -300,14 +300,32 @@ Resources:
             cat >> /etc/apt/sources.list.d/certbot-ubuntu-certbot-xenial.list << EOL
             deb [trusted=yes] http://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/ppa/certbot/certbot/ubuntu xenial main
             EOL
+            # avoid GPG NO_PUBKEY error
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2E1B01D0E95B94BC
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 8C47BE8E75BCA694
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 6657DBE0CC86BB64
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 37B5DD5EFAB46452
+            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 1655A0AB68576280
 
-            # 6. docker-ce Tuna Mirror
+            # 6. nodesource Tuna Mirror
+            cat >> /etc/apt/sources.list.d/nodesource.list << EOL
+            deb [trusted=yes] https://mirrors.tuna.tsinghua.edu.cn/nodesource/deb_8.x xenial main
+            deb-src [trusted=yes] https://mirrors.tuna.tsinghua.edu.cn/nodesource/deb_8.x xenial main
+            EOL
+
+            # 7. change docker-ce Tuna Mirror and install docker-ce
             apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
             add-apt-repository "deb [arch=amd64] https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
             apt-get update -y
 
-            # 7. Download bbb-install.sh and modify the content
+            # 8. Use Docker Hub USTC Mirror
+            mkdir -p /etc/docker/
+            cat >> /etc/docker/daemon.json << EOL
+            {"registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"]}
+            EOL
+
+            # 9. Download bbb-install.sh and modify the content
             cd /tmp/
             git clone https://github.com/JoeShi/bbb-install.git --depth 1
             cd ./bbb-install
@@ -320,15 +338,17 @@ Resources:
             sed -i 's/deb http:\/\/repo.mongodb.org\/apt\/ubuntu/deb [trusted=yes] https:\/\/mirrors.tuna.tsinghua.edu.cn\/mongodb\/apt\/ubuntu/' /tmp/bbb-install/bbb-install.sh
             # to avoid DNS lookup issue
             sed -i 's/nc -zvw3 $external_ip 443/nc -zvw10 $external_ip 443/' /tmp/bbb-install/bbb-install.sh
+            # to avoid 'Did not detect nodejs 8.x candidate for installation'
+            sed -i 's/node_8/deb_8/' /tmp/bbb-install/bbb-install.sh
             chmod 500 /tmp/bbb-install/bbb-install.sh
 
-            # 8. Install BigBlueButton App Server
+            # 10. Install BigBlueButton App Server
             /tmp/bbb-install/bbb-install.sh -s ${DomainName} -v xenial-220 -c ${TurnServerEndpoint}:${SecretId} -e ${Email} -g
 
-            # 9. Create Greenlight Admin user
+            # 11. Create Greenlight Admin user
             docker exec greenlight-v2 bundle exec rake user:create["${GreenlightAccountName}","${GreenlightAccountEmail}","${GreenlightAccountPassword}","admin"]
 
-            # 10. Signal CloudFormation EC2 create completed with status code
+            # 12. Signal CloudFormation EC2 create completed with status code
             /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
       Tags:
         - Key: Name

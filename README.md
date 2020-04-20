@@ -1,14 +1,21 @@
 # BigBlueButton on AWS 
 
-BigBlueButton是一个在线会议系统。 您可以使用此解决方案自动设置在线Web会议系统，也可以将其与我们先前发布的
-[Moodle 方案](https://github.com/aws-samples/moodle-on-aws-cn)结合使用。通过与 Moodle 的结合使用，我们可以快速部署
+[English Version](./README_EN.md)
+
+是一个开源Web会议系统。BigBlueButton支持实时共享音频，视频，幻灯片（带有白板控件），聊天和屏幕。 除此以外，BigBlueButton 经常被与
+LMS(Learning Management System) 来结合使用，例如 Moodle。 教师可以使偏远地区的学生参与投票，表情符号，多用户白板和分组讨论室。 
+演示者可以记录和回放内容，以便以后与他人共享。BigBlueButton可用于在线学习（尽管它可以用于许多其他应用程序）。
+
+在这个项目里，我们提供 BigBlueButton 开源 Web 会议系统在 AWS 中国区的一键部署方案，BigBlueButton 可以在电脑、手机、平板等众多
+平台上直接使用。您可以使用此解决方案自动设置在线Web会议系统，也可以将其与我们先前发布的
+[Moodle 中国区快速部署方案](https://github.com/aws-samples/moodle-on-aws-cn) 结合使用。通过与 Moodle 的结合使用，我们可以快速部署
 一套完整的在线学习解决方案。
 
-- **适用Region:** cn-northwest-1(宁夏), cn-north-1(北京)
+- **适用区域:** cn-northwest-1(宁夏), cn-north-1(北京)
 - **版本:** v1.0
 - **预计部署时间:** 60min
 
-我们推荐您使用 **cn-northwest-1(宁夏)** 区域。如果您在部署过程中出现问题，可以通过 GitHub Issues 联系我们。
+如果您在部署过程中出现问题，可以通过 [GitHub Issues](https://github.com/aws-samples/big-blue-button-on-aws-cn/issues) 联系我们。
 
 ## 架构
 
@@ -16,7 +23,7 @@ BigBlueButton是一个在线会议系统。 您可以使用此解决方案自动
 
 ![Architect](assets/arch2.png)
 
-或者您可以结合[Moodle 方案](https://github.com/aws-samples/moodle-on-aws-cn)结合使用，架构图如下:
+或者您可以与[Moodle 中国区快速部署方案](https://github.com/aws-samples/moodle-on-aws-cn) 结合使用，架构图如下:
 
 ![Architect](assets/arch1.png) 
 
@@ -88,6 +95,14 @@ BigBlueButton是一个在线会议系统。 您可以使用此解决方案自动
     | Domain Name        |             | App Server 域名，在生产环境中必须配置      |
     | EIP Allocation ID  |             | EIP 的 Allocation ID      |
     | Disk Size          | 100         | 磁盘大小     |
+    
+    **Greenlight Admin Account**
+
+    | 参数               | 默认值      | 描述               |
+    | ------------------ | ----------- | ------------------ |
+    | Account Name      | Admin    | Greenlight 用户名称     |
+    | Email        |             | 管理员用户邮箱，您需要通过此邮箱登陆管理员账号      |
+    | Password  |             | 管理员用户密码      |
 
 2. 选择**下一步**。
 
@@ -99,13 +114,36 @@ BigBlueButton是一个在线会议系统。 您可以使用此解决方案自动
 
 您可以在AWS CloudFormation控制台的**状态**列中查看堆栈的状态。 您应该在大约60分钟内看到状态为CREATE_COMPLETE。
 
+
+## 步骤2：通过 Greenlight 登陆 BigBlueButton 控制台
+
+[Greenlight](https://github.com/bigbluebutton/greenlight) 基于 BigBlueButton 构建的在线会议系统UI. 如果您的使用场景是在线会议，
+可以直接按下面的步骤直接使用 Greenlight, 如果您的场景是在线教育，则可以忽略该步骤，搭配 Moodle 来使用。
+
+1. 在 AWS CloudFormation 控制台，选择创建的堆栈（不要选择嵌套堆栈）, 选择**输出**
+
+1. 在**输出**中找到 **AppServerEndpoint**，复制并且在浏览器中该地址，您可以使用 HTTP 或者 HTTPS 的方式访问
+
+3. 使用启动模板时配置的 **Greenlight Email** 及 **Greenlight Password** 登陆，登陆成功后，您可以看到如下界面表示软件安装成功
+
+![](assets/greenlight-home.png)
+
+
 ## 常见问题
 
 **Q: 部署失败了，如何查看失败的原因?**
 
-默认情况下，我们的程序会通过 [CloudWatch Agent] 将日志上传到 [CloudWatch Logs] 服务中，您可以登陆控制台，查看具体的错误原因。
-如果 CloudWatch Agent 未能在您的实例上正确启动，您需要登陆到机器查看错误原因。日志文件位于 `/var/log/cloud-init-output.log`.
+默认情况下，我们的程序会通过 [CloudWatch Agent](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Install-CloudWatch-Agent.html) 
+将日志上传到 [CloudWatch Logs](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html) 
+服务中，您可以登陆控制台，查看具体的错误原因。如果 CloudWatch Agent 未能在您的实例上正确启动，您需要登陆到机器查看错误原因。
+日志文件位于 `/var/log/cloud-init-output.log`. 如果您无法自行解决，可通过 [GitHub Issues](https://github.com/aws-samples/big-blue-button-on-aws-cn/issues)
+联系我们。
 
 **Q: 这个方案可以适用于 AWS 海外区域吗?**
 
 暂时不能，如果您有需要，请开 GitHub Issues 联系我们。
+
+**Q: 请问这个BigBlueButton 的架构支持高可用吗？**
+
+暂不支持。目前这个 Template 只部署了一台 Turn 服务器, 一台 BigBlueButton App 服务器。如果您想提高并发能力，最直接的方法是提升服务器的
+实例大小。我们会在后续的版本中更新支持高可用架构。
