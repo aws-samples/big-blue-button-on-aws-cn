@@ -147,3 +147,7 @@ LMS(Learning Management System) 来结合使用，例如 Moodle。 教师可以�
 
 暂不支持。目前这个 Template 只部署了一台 Turn 服务器, 一台 BigBlueButton App 服务器。如果您想提高并发能力，最直接的方法是提升服务器的
 实例大小。我们会在后续的版本中更新支持高可用架构。
+
+**Q: 安装失败了，我在 CloudWatch Logs 里面观察到的错误日志提示"E: Cloud not get lock /var/lib/dpkg/lock-frontend"**
+
+请删掉这个 CloudFormation 堆栈，并尝试重新安装。

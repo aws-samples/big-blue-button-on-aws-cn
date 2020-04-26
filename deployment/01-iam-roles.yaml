@@ -2,6 +2,22 @@ AWSTemplateFormatVersion: 2010-09-09
 
 Description: Reference Architecture to host Moodle on AWS - Creates IAM roles and Instance profile
 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Secrets Manager
+        Parameters:
+          - SecretArn
+    ParameterLabels:
+      SecretArn:
+        default: Secrets Manager ARN
+
+Parameters:
+  SecretArn:
+    Description: The Secrets Manger store ARN for BigBlueButton Secrets
+    Type: String
+
 Resources:
   InstanceRole:
     Metadata:
@@ -45,7 +61,7 @@ Resources:
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
                 Resource:
-                  - arn:aws-cn:logs:*:*:*
+                  - !Sub arn:${AWS::Partition}:logs:*:*:*
         - PolicyName: AssociateEIP
           PolicyDocument:
             Version: 2012-10-17
@@ -53,6 +69,26 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:AssociateAddress
+                Resource:
+                  - '*'
+        - PolicyName: SecretsManager
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:UpdateSecret
+                Resource:
+                  - !Ref SecretArn
+        - PolicyName: ECRImages
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetAuthorizationToken
+                  - ecr:GetDownloadUrlForLayer
                 Resource:
                   - '*'
 

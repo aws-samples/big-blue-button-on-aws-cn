@@ -180,6 +180,12 @@ Parameters:
 
 Resources:
 
+  secretsmanger:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Used for BigBlueButton Secrets
+      SecretString: '{"BigBlueButtonSecret": "default-secret"}'
+
   securitygroups:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -193,6 +199,8 @@ Resources:
   iamroles:
     Type: AWS::CloudFormation::Stack
     Properties:
+      Parameters:
+        SecretArn: !Ref secretsmanger
       TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%TEMPLATE_BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/01-iam-roles.template
 
   turnserver:
@@ -253,6 +261,8 @@ Resources:
           !Ref GreenlightAccountEmail
         GreenlightAccountPassword:
           !Ref GreenlightAccountPassword
+        SecretArn:
+          !Ref secretsmanger
       TemplateURL: https://s3.cn-north-1.amazonaws.com.cn/%%TEMPLATE_BUCKET_NAME%%/%%SOLUTION_NAME%%/%%VERSION%%/02-app-server.template
 
 Outputs:
@@ -268,3 +278,6 @@ Outputs:
   BastionSecurityGroup:
     Description: Security group for the bastion instance. You can access BigBlueButton App Server and Turn server through instance associated with this security group.
     Value: !GetAtt [securitygroups, Outputs.BastionSecurityGroup]
+  SecretARN:
+    Description: Secret Manager ARN which stores the BigBlueButton Secret. The key name is BigBlueButtonSecret.
+    Value: !Ref secretsmanger
