@@ -29,14 +29,11 @@ LMS(Learning Management System) 来结合使用，例如 Moodle。 教师可以�
 
 ## 部署说明
 
-1. 本解决方案提供 BigBlueButton 在 AWS 中国区域的一键化部署方案. BigBlueButton 使用 
-[GNU Lesser General Public License V3](https://www.gnu.org/licenses/lgpl-3.0.html), 通过本解决方案启动 BigBlueButton 
-则视为接受 [BigBlueButton 协议](https://bigbluebutton.org/open-source-license/).
-
+1. 本解决方案提供 BigBlueButton 在 AWS 中国区域的一键化部署方案. BigBlueButton 使用
+[GNU Lesser General Public License V3](https://www.gnu.org/licenses/lgpl-3.0.html), 通过本解决方案
+启动 BigBlueButton 则视为接受 [BigBlueButton 协议](https://bigbluebutton.org/open-source-license/).
 1. **准备 ICP 备案过的域名**. 在中国大陆地区部署 Web 服务需要有 ICP 备案过的域名，才能合法得运行您的业务。请提前准备好 ICP 备案过的域名.
-
 1. **申请2个弹性IP**. 这2个弹性IP分别用于 Turn Server 和 App Server.
-
 1. **配置 DNS 解析**. 配置 DNS 使 Turn Server 和 App Server 的域名分别指向两个弹性IP.
 
 ## 步骤1: 启动 CloudFormation 堆栈
