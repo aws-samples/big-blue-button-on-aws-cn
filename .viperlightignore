@@ -1,0 +1,6 @@
+^dist/
+deployment/02-app-server.yaml:331
+deployment/02-app-server.yaml:332
+deployment/02-app-server.yaml:333
+CONTRIBUTING.md:51
+CODE_OF_CONDUCT.md:4
