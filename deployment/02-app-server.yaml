@@ -22,6 +22,7 @@ Metadata:
           - GreenlightAccountName
           - GreenlightAccountEmail
           - GreenlightAccountPassword
+          - SecretArn
     ParameterLabels:
       InstanceType:
         default: App Server Instance Type
@@ -51,6 +52,8 @@ Metadata:
         default: Email
       GreenlightAccountPassword:
         default: Password
+      SecretArn:
+        default: Secret Manager ARN
 
 Parameters:
   InstanceType:
@@ -117,6 +120,9 @@ Parameters:
     Description: Password for the admin user
     Type: String
     NoEcho: true
+  SecretArn:
+    Description: Secret Manager ARN for BigBlueButton
+    Type: String
 
 Mappings:
   RegionMap:
@@ -180,20 +186,20 @@ Resources:
             rm -f /etc/localtime
             ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
-            # 0. Replace with Tuna Ubuntu 16.04 apt source
+            # 0. Replace with AWS Mirror Ubuntu 16.04 apt source
             mv /etc/apt/sources.list /etc/apt/sources.list.bak
             cat >> /etc/apt/sources.list << EOL
-            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial main restricted universe multiverse
-            deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial main restricted universe multiverse
-            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-updates main restricted universe multiverse
-            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-updates main restricted universe multiverse
-            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-backports main restricted universe multiverse
-            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-backports main restricted universe multiverse
-            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-security main restricted universe multiverse
-            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-security main restricted universe multiverse
+            deb https://mirrors.testtest.vme360.com/ubuntu/ xenial main restricted universe multiverse
+            deb-src https://mirrors.testtest.vme360.com/ubuntu/ xenial main restricted universe multiverse
+            deb https://mirrors.testtest.vme360.com/ubuntu/ xenial-updates main restricted universe multiverse
+            # deb-src https://mirrors.testtest.vme360.com/ubuntu/ xenial-updates main restricted universe multiverse
+            deb https://mirrors.testtest.vme360.com/ubuntu/ xenial-backports main restricted universe multiverse
+            # deb-src https://mirrors.testtest.vme360.com/ubuntu/ xenial-backports main restricted universe multiverse
+            deb https://mirrors.testtest.vme360.com/ubuntu/ xenial-security main restricted universe multiverse
+            # deb-src https://mirrors.testtest.vme360.com/ubuntu/ xenial-security main restricted universe multiverse
 
-            deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-proposed main restricted universe multiverse
-            # deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ xenial-proposed main restricted universe multiverse
+            deb https://mirrors.testtest.vme360.com/ubuntu/ xenial-proposed main restricted universe multiverse
+            # deb-src https://mirrors.testtest.vme360.com/ubuntu/ xenial-proposed main restricted universe multiverse
             EOL
             chmod 644 /etc/apt/sources.list
             apt-get update -y
@@ -271,15 +277,16 @@ Resources:
             sleep 5
 
             # 2. Install AWS CLI and associcate EIP
-            apt-get install awscli -y
+            apt-get install -y python-pip
+            pip install -i https://pypi.mirrors.testtest.vme360.com/simple pip -U
+            pip config set global.index-url https://pypi.mirrors.testtest.vme360.com/simple
+            apt-get install python3-pip -y
             instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
+            pip3 install awscli --upgrade
             aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
             sleep 5
 
             # 3. Install CloudFormation helper scripts and Fonts
-            apt-get install -y python-pip
-            pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pip -U
-            pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
             wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
             pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
             /usr/local/bin/cfn-init --configsets server_init --verbose --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
@@ -307,17 +314,23 @@ Resources:
             apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 37B5DD5EFAB46452
             apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 1655A0AB68576280
 
-            # 6. nodesource Tuna Mirror
+            # 6. nodesource AWS Mirror
             cat >> /etc/apt/sources.list.d/nodesource.list << EOL
-            deb [trusted=yes] https://mirrors.tuna.tsinghua.edu.cn/nodesource/deb_8.x xenial main
-            deb-src [trusted=yes] https://mirrors.tuna.tsinghua.edu.cn/nodesource/deb_8.x xenial main
+            deb [trusted=yes] https://mirrors.testtest.vme360.com/nodesource/deb_8.x xenial main
+            deb-src [trusted=yes] https://mirrors.testtest.vme360.com/nodesource/deb_8.x xenial main
             EOL
 
-            # 7. change docker-ce Tuna Mirror and install docker-ce
+            # 7. change docker-ce AWS Mirror and install docker-ce
             apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            add-apt-repository "deb [arch=amd64] https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
+            add-apt-repository "deb [arch=amd64] https://mirrors.testtest.vme360.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
             apt-get update -y
+            apt-get install -y docker-ce
+            sleep 5
+            # pulling docker images
+            aws ecr get-login-password --region cn-northwest-1 | docker login --username AWS --password-stdin 753680513547.dkr.ecr.cn-northwest-1.amazonaws.com.cn
+            docker pull 753680513547.dkr.ecr.cn-northwest-1.amazonaws.com.cn/postgres:9.5
+            docker pull 753680513547.dkr.ecr.cn-northwest-1.amazonaws.com.cn/bigbluebutton/greenlight:v2
 
             # 8. Use Docker Hub USTC Mirror
             mkdir -p /etc/docker/
@@ -331,11 +344,11 @@ Resources:
             cd ./bbb-install
             sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/ppa\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/deb https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/deb [trusted=yes] https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/' /tmp/bbb-install/bbb-install.sh
-            sed -i 's/download.docker.com\/linux\/ubuntu/mirrors.tuna.tsinghua.edu.cn\/docker-ce\/linux\/ubuntu/g' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/download.docker.com\/linux\/ubuntu/mirrors.testtest.vme360.com\/docker-ce\/linux\/ubuntu/g' /tmp/bbb-install/bbb-install.sh
             sed -i 's/https:\/\/github.com\/docker\/compose\/releases\/download/https:\/\/get.daocloud.io\/docker\/compose\/releases\/download/' /tmp/bbb-install/bbb-install.sh
             # Change MongoDB Source
             apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
-            sed -i 's/deb http:\/\/repo.mongodb.org\/apt\/ubuntu/deb [trusted=yes] https:\/\/mirrors.tuna.tsinghua.edu.cn\/mongodb\/apt\/ubuntu/' /tmp/bbb-install/bbb-install.sh
+            sed -i 's/deb http:\/\/repo.mongodb.org\/apt\/ubuntu/deb [trusted=yes] https:\/\/mirrors.testtest.vme360.com\/mongodb\/apt\/ubuntu/' /tmp/bbb-install/bbb-install.sh
             # to avoid DNS lookup issue
             sed -i 's/nc -zvw3 $external_ip 443/nc -zvw10 $external_ip 443/' /tmp/bbb-install/bbb-install.sh
             # to avoid 'Did not detect nodejs 8.x candidate for installation'
@@ -348,7 +361,11 @@ Resources:
             # 11. Create Greenlight Admin user
             docker exec greenlight-v2 bundle exec rake user:create["${GreenlightAccountName}","${GreenlightAccountEmail}","${GreenlightAccountPassword}","admin"]
 
-            # 12. Signal CloudFormation EC2 create completed with status code
+            # 12. Update Secret Manager
+            BBB_SECRET=$(bbb-conf --secret | grep Secret | awk '{print $2}')
+            aws secretsmanager update-secret --secret-id ${SecretArn} --secret-string "{\"BBB_SECRET\":\"${!BBB_SECRET}\"}" --region ${AWS::Region}
+
+            # 13. Signal CloudFormation EC2 create completed with status code
             /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Instance --region ${AWS::Region}
       Tags:
         - Key: Name

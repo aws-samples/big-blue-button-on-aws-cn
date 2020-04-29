@@ -29,14 +29,11 @@ LMS(Learning Management System) 来结合使用，例如 Moodle。 教师可以�
 
 ## 部署说明
 
-1. 本解决方案提供 BigBlueButton 在 AWS 中国区域的一键化部署方案. BigBlueButton 使用 
-[GNU Lesser General Public License V3](https://www.gnu.org/licenses/lgpl-3.0.html), 通过本解决方案启动 BigBlueButton 
-则视为接受 [BigBlueButton 协议](https://bigbluebutton.org/open-source-license/).
-
+1. 本解决方案提供 BigBlueButton 在 AWS 中国区域的一键化部署方案. BigBlueButton 使用
+[GNU Lesser General Public License V3](https://www.gnu.org/licenses/lgpl-3.0.html), 通过本解决方案
+启动 BigBlueButton 则视为接受 [BigBlueButton 协议](https://bigbluebutton.org/open-source-license/).
 1. **准备 ICP 备案过的域名**. 在中国大陆地区部署 Web 服务需要有 ICP 备案过的域名，才能合法得运行您的业务。请提前准备好 ICP 备案过的域名.
-
 1. **申请2个弹性IP**. 这2个弹性IP分别用于 Turn Server 和 App Server.
-
 1. **配置 DNS 解析**. 配置 DNS 使 Turn Server 和 App Server 的域名分别指向两个弹性IP.
 
 ## 步骤1: 启动 CloudFormation 堆栈
@@ -147,3 +144,7 @@ LMS(Learning Management System) 来结合使用，例如 Moodle。 教师可以�
 
 暂不支持。目前这个 Template 只部署了一台 Turn 服务器, 一台 BigBlueButton App 服务器。如果您想提高并发能力，最直接的方法是提升服务器的
 实例大小。我们会在后续的版本中更新支持高可用架构。
+
+**Q: 安装失败了，我在 CloudWatch Logs 里面观察到的错误日志提示"E: Cloud not get lock /var/lib/dpkg/lock-frontend"**
+
+请删掉这个 CloudFormation 堆栈，并尝试重新安装。
