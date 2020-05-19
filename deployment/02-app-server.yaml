@@ -293,9 +293,9 @@ Resources:
 
             # 4. Use Tuna RubyGems Mirror
             apt-get install ruby -y
-            gem sources --add https://mirrors.tuna.tsinghua.edu.cn/rubygems/ --remove https://rubygems.org/
+            gem sources --add https://mirrors.testtest.vme360.com/rubygems/ --remove https://rubygems.org/
             apt-get install ruby-bundler -y
-            bundle config mirror.https://rubygems.org https://mirrors.tuna.tsinghua.edu.cn/rubygems
+            bundle config mirror.https://rubygems.org https://mirrors.testtest.vme360.com/rubygems
 
             # 5. Change PPA Source: yq, bigbluebutton-support, certbot
             cat >> /etc/apt/sources.list.d/rmescandon-ubuntu-yq-xenial.list << EOL
@@ -330,7 +330,9 @@ Resources:
             # pulling docker images
             aws ecr get-login-password --region cn-northwest-1 | docker login --username AWS --password-stdin 753680513547.dkr.ecr.cn-northwest-1.amazonaws.com.cn
             docker pull 753680513547.dkr.ecr.cn-northwest-1.amazonaws.com.cn/postgres:9.5
+            docker tag 753680513547.dkr.ecr.cn-northwest-1.amazonaws.com.cn/postgres:9.5 postgres:9.5
             docker pull 753680513547.dkr.ecr.cn-northwest-1.amazonaws.com.cn/bigbluebutton/greenlight:v2
+            docker tag 753680513547.dkr.ecr.cn-northwest-1.amazonaws.com.cn/bigbluebutton/greenlight:v2 bigbluebutton/greenlight:v2
 
             # 8. Use Docker Hub USTC Mirror
             mkdir -p /etc/docker/
@@ -340,7 +342,7 @@ Resources:
 
             # 9. Download bbb-install.sh and modify the content
             cd /tmp/
-            git clone https://github.com/JoeShi/bbb-install.git --depth 1
+            git clone https://gitee.com/nwcdlabs-solution/bbb-install.git --depth 1
             cd ./bbb-install
             sed -i 's/PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org/PACKAGE_REPOSITORY=aws-solutions-assets.s3.cn-north-1.amazonaws.com.cn\/ppa\/bigbluebutton/' /tmp/bbb-install/bbb-install.sh
             sed -i 's/deb https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/deb [trusted=yes] https:\/\/$PACKAGE_REPOSITORY\/$VERSION bigbluebutton-$DISTRO main/' /tmp/bbb-install/bbb-install.sh
