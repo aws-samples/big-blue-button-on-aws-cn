@@ -221,7 +221,7 @@ Resources:
             pip config set global.index-url https://pypi.mirrors.testtest.vme360.com/simple
             apt-get install python3-pip -y
             instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
-            pip3 install awscli --upgrade
+            pip3 install awscli==1.18.61 --upgrade
             aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
             sleep 5
 

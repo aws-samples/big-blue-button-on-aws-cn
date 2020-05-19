@@ -282,7 +282,7 @@ Resources:
             pip config set global.index-url https://pypi.mirrors.testtest.vme360.com/simple
             apt-get install python3-pip -y
             instanceId=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
-            pip3 install awscli --upgrade
+            pip3 install awscli==1.18.61 --upgrade
             aws ec2 associate-address --allocation-id ${EIPAllocationId} --instance-id $instanceId --region ${AWS::Region}
             sleep 5
 
@@ -293,9 +293,9 @@ Resources:
 
             # 4. Use Tuna RubyGems Mirror
             apt-get install ruby -y
-            gem sources --add https://mirrors.testtest.vme360.com/rubygems/ --remove https://rubygems.org/
+            gem sources --add https://mirrors.tuna.tsinghua.edu.cn/rubygems/ --remove https://rubygems.org/
             apt-get install ruby-bundler -y
-            bundle config mirror.https://rubygems.org https://mirrors.testtest.vme360.com/rubygems
+            bundle config mirror.https://rubygems.org https://mirrors.tuna.tsinghua.edu.cn/rubygems
 
             # 5. Change PPA Source: yq, bigbluebutton-support, certbot
             cat >> /etc/apt/sources.list.d/rmescandon-ubuntu-yq-xenial.list << EOL
