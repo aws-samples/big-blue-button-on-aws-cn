@@ -181,6 +181,11 @@ Parameters:
 Resources:
 
   secretsmanger:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W77
+            reason: Use default KMS ID
     Type: AWS::SecretsManager::Secret
     Properties:
       Description: Used for BigBlueButton Secrets
