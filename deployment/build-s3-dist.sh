@@ -14,7 +14,7 @@
 #  - solution-name: name of the solution for consistency
 #
 #  - version-code: version of the package
-
+echo "[!]"
 
 # Check to see if input has been provided:
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
